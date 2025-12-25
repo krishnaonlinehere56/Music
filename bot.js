@@ -1,7 +1,7 @@
-// bot.js - Main Bot Entry Point
+// bot.js - Main Bot Entry Point (FINAL VERSION)
 
 require('dotenv').config();
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
 const musicCommands = require('./commands/music');
 
 // Discord Client Setup
@@ -15,9 +15,17 @@ const client = new Client({
 });
 
 // Bot Ready Event
-client.once('ready', () => {
+client.once('clientReady', () => {
     console.log(`✅ Bot online: ${client.user.tag}`);
-    client.user.setActivity('.help for commands', { type: 'LISTENING' });
+    
+    // Set bot status (LISTENING activity)
+    client.user.setPresence({
+        activities: [{ 
+            name: '.help for commands', 
+            type: ActivityType.Listening 
+        }],
+        status: 'online'
+    });
 });
 
 // Message Handler
@@ -40,6 +48,15 @@ client.on('messageCreate', async (message) => {
         console.error(`Error executing command ${command}:`, error);
         message.reply('❌ Something went wrong!');
     }
+});
+
+// Error handling
+client.on('error', error => {
+    console.error('Discord client error:', error);
+});
+
+process.on('unhandledRejection', error => {
+    console.error('Unhandled promise rejection:', error);
 });
 
 // Login Bot
