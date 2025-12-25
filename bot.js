@@ -1,8 +1,21 @@
-// bot.js - Main Bot Entry Point (FINAL VERSION)
+// bot.js - Main Bot Entry Point (FINAL VERSION with HTTP server)
 
 require('dotenv').config();
 const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
+const express = require('express');
 const musicCommands = require('./commands/music');
+
+// Express server for Render (to keep it alive)
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+    res.send('🎵 Music Bot is running!');
+});
+
+app.listen(PORT, () => {
+    console.log(`✅ HTTP Server running on port ${PORT}`);
+});
 
 // Discord Client Setup
 const client = new Client({
@@ -18,7 +31,6 @@ const client = new Client({
 client.once('clientReady', () => {
     console.log(`✅ Bot online: ${client.user.tag}`);
     
-    // Set bot status (LISTENING activity)
     client.user.setPresence({
         activities: [{ 
             name: '.help for commands', 
@@ -30,18 +42,14 @@ client.once('clientReady', () => {
 
 // Message Handler
 client.on('messageCreate', async (message) => {
-    // Ignore bots
     if (message.author.bot) return;
 
-    // Check if message starts with prefix
     const prefix = '.';
     if (!message.content.startsWith(prefix)) return;
 
-    // Parse command and args
     const args = message.content.slice(prefix.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // Execute music commands
     try {
         await musicCommands.execute(command, message, args);
     } catch (error) {
