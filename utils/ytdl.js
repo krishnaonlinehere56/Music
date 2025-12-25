@@ -1,56 +1,57 @@
-// utils/ytdl.js - YouTube Audio-Only Fetcher (High Quality)
+// utils/ytdl.js - YouTube Audio Fetcher (Updated with play-dl)
 
-const ytdl = require('ytdl-core');
-const ytsr = require('ytsr');
+const play = require('play-dl');
+
+// Initialize play-dl
+async function initialize() {
+    try {
+        // Agar cookies chahiye to uncomment karo (optional)
+        // await play.setToken({ youtube: { cookie: 'your_cookies_here' } });
+    } catch (error) {
+        console.log('play-dl initialized without cookies');
+    }
+}
+
+initialize();
 
 // Get high quality audio stream from YouTube
 async function getAudioStream(trackName, artistName) {
     try {
-        // Search for track on YouTube (album version priority)
+        // Search for track on YouTube
         const searchQuery = `${trackName} ${artistName} official audio`;
-        const searchResults = await ytsr(searchQuery, { limit: 5 });
+        const searchResults = await play.search(searchQuery, { limit: 5, source: { youtube: 'video' } });
 
-        if (!searchResults || searchResults.items.length === 0) {
+        if (!searchResults || searchResults.length === 0) {
             console.error('No YouTube results found');
             return null;
         }
 
-        // Filter only videos (no playlists, channels)
-        const videos = searchResults.items.filter(item => item.type === 'video');
+        // Prioritize: Official Audio > Topic channels
+        let video = searchResults[0];
         
-        if (videos.length === 0) {
-            console.error('No valid videos found');
-            return null;
-        }
-
-        // Prioritize: Official Audio > Topic channels > others
-        let videoUrl = videos[0].url;
-        
-        for (const video of videos) {
-            const title = video.title.toLowerCase();
-            const author = video.author?.name?.toLowerCase() || '';
+        for (const result of searchResults) {
+            const title = result.title.toLowerCase();
+            const channelName = result.channel?.name?.toLowerCase() || '';
             
             // Priority 1: Official Audio or Album version
-            if (title.includes('official audio') || title.includes('album')) {
-                videoUrl = video.url;
+            if (title.includes('official audio') || title.includes('album') || title.includes('audio')) {
+                video = result;
                 break;
             }
             
-            // Priority 2: Topic channels (official releases)
-            if (author.includes('topic')) {
-                videoUrl = video.url;
+            // Priority 2: Topic channels
+            if (channelName.includes('topic')) {
+                video = result;
                 break;
             }
         }
 
-        // Get audio stream (highest quality audio only, no video)
-        const stream = ytdl(videoUrl, {
-            filter: 'audioonly',
-            quality: 'highestaudio',
-            highWaterMark: 1 << 25, // 32MB buffer for smooth playback
+        // Get audio stream (highest quality)
+        const stream = await play.stream(video.url, {
+            quality: 2, // Highest quality audio
         });
 
-        return stream;
+        return stream.stream;
 
     } catch (error) {
         console.error('YouTube fetch error:', error);
@@ -61,3 +62,23 @@ async function getAudioStream(trackName, artistName) {
 module.exports = {
     getAudioStream
 };
+```
+
+---
+
+### **3. Render.com Settings:**
+
+**Environment Variables me add karo:**
+```
+NODE_VERSION=18.20.0
+YTDL_NO_UPDATE=true
+```
+
+**Build Command:**
+```
+npm install && npm install sodium-native --build-from-source
+```
+
+**Start Command:**
+```
+node bot.js
