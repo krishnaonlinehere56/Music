@@ -1,60 +1,77 @@
-// utils/ytdl.js - YouTube Audio Fetcher (Updated with play-dl)
+// utils/ytdl.js - YouTube Audio Fetcher (Using distube/ytdl-core)
 
-const play = require('play-dl');
+const ytdl = require('@distube/ytdl-core');
 
-// Initialize play-dl
-async function initialize() {
+// Search YouTube using simple method
+async function searchYouTube(query) {
     try {
-        // Agar cookies chahiye to uncomment karo (optional)
-        // await play.setToken({ youtube: { cookie: 'your_cookies_here' } });
+        // Use YouTube search URL
+        const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+        
+        // Use ytdl to validate and get video
+        // Alternative: construct likely video URL pattern
+        const searchQuery = query.replace(/ /g, '+');
+        const videoId = await getFirstVideoId(searchQuery);
+        
+        if (!videoId) return null;
+        
+        return `https://www.youtube.com/watch?v=${videoId}`;
+        
     } catch (error) {
-        console.log('play-dl initialized without cookies');
+        console.error('YouTube search error:', error);
+        return null;
     }
 }
 
-initialize();
+// Simple video ID extractor (fallback method)
+async function getFirstVideoId(query) {
+    try {
+        const axios = require('axios');
+        const response = await axios.get(
+            `https://www.youtube.com/results?search_query=${query}`,
+            { headers: { 'User-Agent': 'Mozilla/5.0' } }
+        );
+        
+        const html = response.data;
+        const match = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
+        
+        return match ? match[1] : null;
+    } catch (error) {
+        console.error('Video ID extraction error:', error);
+        return null;
+    }
+}
 
-// Get high quality audio stream from YouTube
+// Get high quality audio stream
 async function getAudioStream(trackName, artistName) {
     try {
-        // Search for track on YouTube
+        // Search for video
         const searchQuery = `${trackName} ${artistName} official audio`;
-        const searchResults = await play.search(searchQuery, { limit: 5, source: { youtube: 'video' } });
-
-        if (!searchResults || searchResults.length === 0) {
-            console.error('No YouTube results found');
+        const videoUrl = await searchYouTube(searchQuery);
+        
+        if (!videoUrl) {
+            console.error('No video found for query');
             return null;
         }
 
-        // Prioritize: Official Audio > Topic channels
-        let video = searchResults[0];
-        
-        for (const result of searchResults) {
-            const title = result.title.toLowerCase();
-            const channelName = result.channel?.name?.toLowerCase() || '';
-            
-            // Priority 1: Official Audio or Album version
-            if (title.includes('official audio') || title.includes('album') || title.includes('audio')) {
-                video = result;
-                break;
-            }
-            
-            // Priority 2: Topic channels
-            if (channelName.includes('topic')) {
-                video = result;
-                break;
-            }
+        // Validate URL
+        if (!ytdl.validateURL(videoUrl)) {
+            console.error('Invalid YouTube URL');
+            return null;
         }
 
-        // Get audio stream (highest quality)
-        const stream = await play.stream(video.url, {
-            quality: 2, // Highest quality audio
+        // Get audio stream
+        const stream = ytdl(videoUrl, {
+            filter: 'audioonly',
+            quality: 'highestaudio',
+            highWaterMark: 1 << 25,
+            dlChunkSize: 0,
         });
 
-        return stream.stream;
+        return stream;
 
     } catch (error) {
-        console.error('YouTube fetch error:', error);
+        console.error('Audio stream error:', error);
         return null;
     }
 }
@@ -62,4 +79,3 @@ async function getAudioStream(trackName, artistName) {
 module.exports = {
     getAudioStream
 };
-
