@@ -62,23 +62,4 @@ async function getAudioStream(trackName, artistName) {
 module.exports = {
     getAudioStream
 };
-```
 
----
-
-### **3. Render.com Settings:**
-
-**Environment Variables me add karo:**
-```
-NODE_VERSION=18.20.0
-YTDL_NO_UPDATE=true
-```
-
-**Build Command:**
-```
-npm install && npm install sodium-native --build-from-source
-```
-
-**Start Command:**
-```
-node bot.js
